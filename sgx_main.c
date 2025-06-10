@@ -71,8 +71,8 @@
 #include <linux/kthread.h>
 #include <linux/platform_device.h>
 
-#define DRV_DESCRIPTION "Intel SGX Driver"
-#define DRV_VERSION "2.11.0"
+#define DRV_DESCRIPTION "Fortanix Intel SGX Driver"
+#define DRV_VERSION "2.12.0"
 
 #ifndef MSR_IA32_FEAT_CTL
 #define MSR_IA32_FEAT_CTL MSR_IA32_FEATURE_CONTROL
@@ -105,6 +105,7 @@ u64 sgx_xfrm_mask = 0x3;
 u32 sgx_misc_reserved;
 u32 sgx_xsave_size_tbl[64];
 bool sgx_has_sgx2;
+bool sgx_dev_alt_name;
 
 static int sgx_mmap(struct file *file, struct vm_area_struct *vma)
 {
@@ -168,6 +169,27 @@ static struct miscdevice sgx_dev = {
 	.mode   = 0666,
 };
 
+static struct miscdevice sgx_dev_alt = {
+ .minor	= MISC_DYNAMIC_MINOR,
+	.name	= "sgx",
+	.fops	= &sgx_fops,
+	.mode   = 0666,
+};
+
+static bool has_flc(void)
+{
+	unsigned int eax, ebx, ecx, edx;
+	cpuid(7, &eax, &ebx, &ecx, &edx);
+	return (ecx >> 30) == 0x1;
+}
+
+static struct miscdevice *sgx_device(void) {
+	if (sgx_dev_alt_name || has_flc())
+		return &sgx_dev_alt;
+	else
+		return &sgx_dev;
+}
+
 static int sgx_pm_suspend(struct device *dev)
 {
 	struct sgx_tgid_ctx *ctx;
@@ -184,7 +206,7 @@ static int sgx_pm_suspend(struct device *dev)
 	return 0;
 }
 
-static void sgx_reset_pubkey_hash(void *failed)
+void sgx_reset_pubkey_hash(void *failed)
 {
 	if (wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH0, 0xa6053e051270b7acULL) ||
 		wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH1, 0x6cfbe8ba8b3b413dULL) ||
@@ -203,6 +225,7 @@ static int sgx_dev_init(struct device *parent)
 	int ret;
 	int i;
 	int msr_reset_failed = 0;
+	struct miscdevice *dev = sgx_device();
 
 	pr_info("intel_sgx: " DRV_DESCRIPTION " v" DRV_VERSION "\n");
 
@@ -274,8 +297,8 @@ static int sgx_dev_init(struct device *parent)
 		goto out_page_cache;
 	}
 
-	sgx_dev.parent = parent;
-	ret = misc_register(&sgx_dev);
+	dev->parent = parent;
+	ret = misc_register(dev);
 	if (ret) {
 		pr_err("intel_sgx: misc_register() failed\n");
 		goto out_workqueue;
@@ -357,7 +380,7 @@ static int sgx_drv_remove(struct platform_device *pdev)
 		return 0;
 	}
 
-	misc_deregister(&sgx_dev);
+	misc_deregister(sgx_device());
 
 	destroy_workqueue(sgx_add_page_wq);
 #ifdef CONFIG_X86_64
@@ -408,3 +431,6 @@ module_init(init_sgx_module);
 module_exit(cleanup_sgx_module);
 
 MODULE_LICENSE("Dual BSD/GPL");
+
+module_param_named(devsgx, sgx_dev_alt_name, bool, 0444);
+MODULE_PARM_DESC(sgx_dev_alt_name, "Device name is sgx instead of isgx");
