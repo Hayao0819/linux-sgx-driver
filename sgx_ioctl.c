@@ -65,19 +65,20 @@
 #include <linux/highmem.h>
 #include <linux/ratelimit.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
-	#include <linux/sched/signal.h>
+#include <linux/sched/signal.h>
 #else
-	#include <linux/signal.h>
+#include <linux/signal.h>
 #endif
 #include <linux/slab.h>
 #include <linux/hashtable.h>
 #include <linux/shmem_fs.h>
 #include <crypto/hash.h>
 
-int sgx_get_encl(unsigned long addr, struct sgx_encl **encl)
+int
+sgx_get_encl(unsigned long addr, struct sgx_encl** encl)
 {
-	struct mm_struct *mm = current->mm;
-	struct vm_area_struct *vma;
+	struct mm_struct* mm = current->mm;
+	struct vm_area_struct* vma;
 	int ret;
 
 	if (addr & (PAGE_SIZE - 1))
@@ -121,15 +122,15 @@ int sgx_get_encl(unsigned long addr, struct sgx_encl **encl)
  * 0 on success,
  * system error on failure
  */
-static long sgx_ioc_enclave_create(struct file *filep, unsigned int cmd,
-				   unsigned long arg)
+static long
+sgx_ioc_enclave_create(struct file* filep, unsigned int cmd, unsigned long arg)
 {
-	struct sgx_enclave_create *createp = (struct sgx_enclave_create *)arg;
-	void __user *src = (void __user *)createp->src;
-	struct sgx_secs *secs;
+	struct sgx_enclave_create* createp = (struct sgx_enclave_create*)arg;
+	void __user* src = (void __user*)createp->src;
+	struct sgx_secs* secs;
 	int ret;
 
-	secs = kzalloc(sizeof(*secs),  GFP_KERNEL);
+	secs = kzalloc(sizeof(*secs), GFP_KERNEL);
 	if (!secs)
 		return -ENOMEM;
 
@@ -159,23 +160,23 @@ static long sgx_ioc_enclave_create(struct file *filep, unsigned int cmd,
  * 0 on success,
  * system error on failure
  */
-static long sgx_ioc_enclave_add_page(struct file *filep, unsigned int cmd,
-				     unsigned long arg)
+static long
+sgx_ioc_enclave_add_page(struct file* filep, unsigned int cmd,
+			 unsigned long arg)
 {
-	struct sgx_enclave_add_page *addp = (void *)arg;
+	struct sgx_enclave_add_page* addp = (void*)arg;
 	unsigned long secinfop = (unsigned long)addp->secinfo;
 	struct sgx_secinfo secinfo;
-	struct sgx_encl *encl;
-	struct page *data_page;
-	void *data;
+	struct sgx_encl* encl;
+	struct page* data_page;
+	void* data;
 	int ret;
 
 	ret = sgx_get_encl(addp->addr, &encl);
 	if (ret)
 		return ret;
 
-	if (copy_from_user(&secinfo, (void __user *)secinfop,
-			   sizeof(secinfo))) {
+	if (copy_from_user(&secinfo, (void __user*)secinfop, sizeof(secinfo))) {
 		kref_put(&encl->refcount, sgx_encl_release);
 		return -EFAULT;
 	}
@@ -188,7 +189,7 @@ static long sgx_ioc_enclave_add_page(struct file *filep, unsigned int cmd,
 
 	data = kmap(data_page);
 
-	ret = copy_from_user((void *)data, (void __user *)addp->src, PAGE_SIZE);
+	ret = copy_from_user((void*)data, (void __user*)addp->src, PAGE_SIZE);
 	if (ret)
 		goto out;
 
@@ -203,8 +204,8 @@ out:
 	return ret;
 }
 
-static int __sgx_get_key_hash(struct crypto_shash *tfm, const void *modulus,
-			      void *hash)
+static int
+__sgx_get_key_hash(struct crypto_shash* tfm, const void* modulus, void* hash)
 {
 	SHASH_DESC_ON_STACK(shash, tfm);
 
@@ -213,9 +214,10 @@ static int __sgx_get_key_hash(struct crypto_shash *tfm, const void *modulus,
 	return crypto_shash_digest(shash, modulus, SGX_MODULUS_SIZE, hash);
 }
 
-static int sgx_get_key_hash(const void *modulus, void *hash)
+static int
+sgx_get_key_hash(const void* modulus, void* hash)
 {
-	struct crypto_shash *tfm;
+	struct crypto_shash* tfm;
 	int ret;
 
 	tfm = crypto_alloc_shash("sha256", 0, CRYPTO_ALG_ASYNC);
@@ -241,26 +243,26 @@ static int sgx_get_key_hash(const void *modulus, void *hash)
  * 0 on success,
  * system error on failure
  */
-static long sgx_ioc_enclave_init(struct file *filep, unsigned int cmd,
-				 unsigned long arg)
+static long
+sgx_ioc_enclave_init(struct file* filep, unsigned int cmd, unsigned long arg)
 {
 	unsigned long sigstructp;
 	unsigned long einittokenp;
 	unsigned long encl_id;
-	struct sgx_enclave_init *initp;
-	struct sgx_enclave_init_no_token *initntp;
-	struct sgx_sigstruct *sigstruct;
-	struct sgx_einittoken *einittoken;
-	struct sgx_encl *encl;
-	struct page *initp_page;
+	struct sgx_enclave_init* initp;
+	struct sgx_enclave_init_no_token* initntp;
+	struct sgx_sigstruct* sigstruct;
+	struct sgx_einittoken* einittoken;
+	struct sgx_encl* encl;
+	struct page* initp_page;
 	int ret;
 
 	if (cmd == SGX_IOC_ENCLAVE_INIT_NO_TOKEN) {
-		initntp = (struct sgx_enclave_init_no_token *)arg;
+		initntp = (struct sgx_enclave_init_no_token*)arg;
 		sigstructp = (unsigned long)initntp->sigstruct;
 		encl_id = initntp->addr;
 	} else {
-		initp = (struct sgx_enclave_init *)arg;
+		initp = (struct sgx_enclave_init*)arg;
 		sigstructp = (unsigned long)initp->sigstruct;
 		einittokenp = (unsigned long)initp->einittoken;
 		encl_id = initp->addr;
@@ -271,21 +273,22 @@ static long sgx_ioc_enclave_init(struct file *filep, unsigned int cmd,
 		return -ENOMEM;
 
 	sigstruct = kmap(initp_page);
-	einittoken = (struct sgx_einittoken *)
-		((unsigned long)sigstruct + PAGE_SIZE / 2);
+	einittoken = (struct sgx_einittoken*)((unsigned long)sigstruct +
+					      PAGE_SIZE / 2);
 
-	ret = copy_from_user(sigstruct, (void __user *)sigstructp,
+	ret = copy_from_user(sigstruct, (void __user*)sigstructp,
 			     sizeof(*sigstruct));
 	if (ret)
 		goto out;
 
 	if (cmd != SGX_IOC_ENCLAVE_INIT_NO_TOKEN) {
-		ret = copy_from_user(einittoken, (void __user *)einittokenp,
-					 sizeof(*einittoken));
+		ret = copy_from_user(einittoken, (void __user*)einittokenp,
+				     sizeof(*einittoken));
 		if (ret)
 			goto out;
 	} else {
-		ret = sgx_get_key_hash(sigstruct->modulus, einittoken->payload.mrsigner);
+		ret = sgx_get_key_hash(sigstruct->modulus,
+				       einittoken->payload.mrsigner);
 		if (ret)
 			goto out;
 	}
@@ -294,7 +297,8 @@ static long sgx_ioc_enclave_init(struct file *filep, unsigned int cmd,
 	if (ret)
 		goto out;
 
-	ret = sgx_encl_init(encl, sigstruct, einittoken, cmd == SGX_IOC_ENCLAVE_INIT_NO_TOKEN);
+	ret = sgx_encl_init(encl, sigstruct, einittoken,
+			    cmd == SGX_IOC_ENCLAVE_INIT_NO_TOKEN);
 
 	kref_put(&encl->refcount, sgx_encl_release);
 
@@ -304,11 +308,10 @@ out:
 	return ret;
 }
 
-long sgx_ioc_page_modpr(struct file *filep, unsigned int cmd,
-			unsigned long arg)
+long
+sgx_ioc_page_modpr(struct file* filep, unsigned int cmd, unsigned long arg)
 {
-	struct sgx_modification_param *p =
-		(struct sgx_modification_param *) arg;
+	struct sgx_modification_param* p = (struct sgx_modification_param*)arg;
 
 	/*
 	 * Only RWX flags in mask are allowed
@@ -316,8 +319,7 @@ long sgx_ioc_page_modpr(struct file *filep, unsigned int cmd,
 	 */
 	if (p->flags & ~(SGX_SECINFO_R | SGX_SECINFO_W | SGX_SECINFO_X))
 		return -EINVAL;
-	if (!(p->flags & SGX_SECINFO_R) &&
-	    (p->flags & SGX_SECINFO_W))
+	if (!(p->flags & SGX_SECINFO_R) && (p->flags & SGX_SECINFO_W))
 		return -EINVAL;
 	return modify_range(&p->range, p->flags);
 }
@@ -328,10 +330,10 @@ long sgx_ioc_page_modpr(struct file *filep, unsigned int cmd,
  * eaccept needs to be invoked after return.
  * @arg range address of pages to be switched
  */
-long sgx_ioc_page_to_tcs(struct file *filep, unsigned int cmd,
-			 unsigned long arg)
+long
+sgx_ioc_page_to_tcs(struct file* filep, unsigned int cmd, unsigned long arg)
 {
-	return modify_range((struct sgx_range *)arg, SGX_SECINFO_TCS);
+	return modify_range((struct sgx_range*)arg, SGX_SECINFO_TCS);
 }
 
 /**
@@ -340,10 +342,10 @@ long sgx_ioc_page_to_tcs(struct file *filep, unsigned int cmd,
  * eaccept has been invoked
  * @arg range address of pages to be trimmed
  */
-long sgx_ioc_trim_page(struct file *filep, unsigned int cmd,
-		       unsigned long arg)
+long
+sgx_ioc_trim_page(struct file* filep, unsigned int cmd, unsigned long arg)
 {
-	return modify_range((struct sgx_range *)arg, SGX_SECINFO_TRIM);
+	return modify_range((struct sgx_range*)arg, SGX_SECINFO_TRIM);
 }
 
 /**
@@ -352,21 +354,22 @@ long sgx_ioc_trim_page(struct file *filep, unsigned int cmd,
  * should have PT_TRIM page type and should have been eaccepted priorly
  * @arg range address of pages
  */
-long sgx_ioc_page_notify_accept(struct file *filep, unsigned int cmd,
-				unsigned long arg)
+long
+sgx_ioc_page_notify_accept(struct file* filep, unsigned int cmd,
+			   unsigned long arg)
 {
-	struct sgx_range *rg;
+	struct sgx_range* rg;
 	unsigned long address, end;
-	struct sgx_encl *encl;
+	struct sgx_encl* encl;
 	int ret, tmp_ret = 0;
 
 	if (!sgx_has_sgx2)
 		return -ENOSYS;
 
-	rg = (struct sgx_range *)arg;
+	rg = (struct sgx_range*)arg;
 
 	address = rg->start_addr;
-	address &= ~(PAGE_SIZE-1);
+	address &= ~(PAGE_SIZE - 1);
 	end = address + rg->nr_pages * PAGE_SIZE;
 
 	ret = sgx_get_encl(address, &encl);
@@ -380,7 +383,7 @@ long sgx_ioc_page_notify_accept(struct file *filep, unsigned int cmd,
 		tmp_ret = remove_page(encl, address, true);
 		if (tmp_ret) {
 			sgx_dbg(encl, "sgx: remove failed, addr=0x%lx ret=%d\n",
-				 address, tmp_ret);
+				address, tmp_ret);
 			ret = tmp_ret;
 			continue;
 		}
@@ -395,11 +398,11 @@ long sgx_ioc_page_notify_accept(struct file *filep, unsigned int cmd,
  * sgx_ioc_page_remove() - Pages defined by address will be removed
  * @arg address of page
  */
-long sgx_ioc_page_remove(struct file *filep, unsigned int cmd,
-			 unsigned long arg)
+long
+sgx_ioc_page_remove(struct file* filep, unsigned int cmd, unsigned long arg)
 {
-	struct sgx_encl *encl;
-	unsigned long address = *((unsigned long *) arg);
+	struct sgx_encl* encl;
+	unsigned long address = *((unsigned long*)arg);
 	int ret;
 
 	if (!sgx_has_sgx2)
@@ -421,10 +424,11 @@ long sgx_ioc_page_remove(struct file *filep, unsigned int cmd,
 	return ret;
 }
 
-typedef long (*sgx_ioc_t)(struct file *filep, unsigned int cmd,
+typedef long (*sgx_ioc_t)(struct file* filep, unsigned int cmd,
 			  unsigned long arg);
 
-long sgx_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
+long
+sgx_ioctl(struct file* filep, unsigned int cmd, unsigned long arg)
 {
 	char data[256];
 	sgx_ioc_t handler = NULL;
@@ -460,12 +464,12 @@ long sgx_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		return -ENOIOCTLCMD;
 	}
 
-	if (copy_from_user(data, (void __user *)arg, _IOC_SIZE(cmd)))
+	if (copy_from_user(data, (void __user*)arg, _IOC_SIZE(cmd)))
 		return -EFAULT;
 
-	ret = handler(filep, cmd, (unsigned long)((void *)data));
+	ret = handler(filep, cmd, (unsigned long)((void*)data));
 	if (!ret && (cmd & IOC_OUT)) {
-		if (copy_to_user((void __user *)arg, data, _IOC_SIZE(cmd)))
+		if (copy_to_user((void __user*)arg, data, _IOC_SIZE(cmd)))
 			return -EFAULT;
 	}
 

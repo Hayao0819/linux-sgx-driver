@@ -63,9 +63,10 @@
 
 #define SGX_NR_MOD_CHUNK_PAGES 16
 
-int sgx_init_page(struct sgx_encl *encl, struct sgx_encl_page *entry,
-		  unsigned long addr, unsigned int alloc_flags,
-		  struct sgx_epc_page **va_src, bool already_locked);
+int
+sgx_init_page(struct sgx_encl* encl, struct sgx_encl_page* entry,
+	      unsigned long addr, unsigned int alloc_flags,
+	      struct sgx_epc_page** va_src, bool already_locked);
 /**
  * sgx_encl_augment() - adds a page to an enclave
  * @addr:	virtual address where the page should be added
@@ -76,17 +77,16 @@ int sgx_init_page(struct sgx_encl *encl, struct sgx_encl_page *entry,
  *
  * Note: Invoking function must already hold the encl->lock
  */
-struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
-				       unsigned long addr,
-				       bool write)
+struct sgx_encl_page*
+sgx_encl_augment(struct vm_area_struct* vma, unsigned long addr, bool write)
 {
 	struct sgx_pageinfo pginfo;
 	struct sgx_epc_page *epc_page, *va_page = NULL;
-	struct sgx_epc_page *secs_epc_page = NULL;
-	struct sgx_encl_page *encl_page;
-	struct sgx_encl *encl = (struct sgx_encl *) vma->vm_private_data;
-	void *epc_va;
-	void *secs_va;
+	struct sgx_epc_page* secs_epc_page = NULL;
+	struct sgx_encl_page* encl_page;
+	struct sgx_encl* encl = (struct sgx_encl*)vma->vm_private_data;
+	void* epc_va;
+	void* secs_va;
 	int ret = -EFAULT;
 
 	if (!sgx_has_sgx2)
@@ -96,7 +96,7 @@ struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
 	if (unlikely(!(vma->vm_flags & VM_WRITE)))
 		return ERR_PTR(-EFAULT);
 
-	addr &= ~(PAGE_SIZE-1);
+	addr &= ~(PAGE_SIZE - 1);
 
 	/* Note: Invoking function holds the encl->lock */
 
@@ -161,7 +161,7 @@ struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
 	pginfo.srcpge = 0;
 	pginfo.secinfo = 0;
 	pginfo.linaddr = addr;
-	pginfo.secs = (unsigned long) secs_va;
+	pginfo.secs = (unsigned long)secs_va;
 
 	ret = __eaug(&pginfo, epc_va);
 	if (ret) {
@@ -169,7 +169,7 @@ struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
 		goto out;
 	}
 
-        ret = sgx_vm_insert_pfn(vma, encl_page->addr, epc_page->pa);
+	ret = sgx_vm_insert_pfn(vma, encl_page->addr, epc_page->pa);
 	sgx_put_page(epc_va);
 	sgx_put_page(secs_va);
 	if (ret != VM_FAULT_NOPAGE) {
@@ -182,7 +182,7 @@ struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
 	encl->secs_child_cnt++;
 
 	ret = radix_tree_insert(&encl->page_tree, encl_page->addr >> PAGE_SHIFT,
-			        encl_page);
+				encl_page);
 	if (ret) {
 		pr_err("sgx: radix_tree_insert failed with ret=%d\n", ret);
 		goto out;
@@ -218,18 +218,19 @@ out:
 	if (secs_epc_page)
 		sgx_free_page(secs_epc_page, encl);
 
-	if ((ret == -EBUSY)||(ret == -ERESTARTSYS))
+	if ((ret == -EBUSY) || (ret == -ERESTARTSYS))
 		return ERR_PTR(ret);
 
 	return ERR_PTR(-EFAULT);
 }
 
-static int isolate_range(struct sgx_encl *encl,
-			 struct sgx_range *rg, struct list_head *list)
+static int
+isolate_range(struct sgx_encl* encl, struct sgx_range* rg,
+	      struct list_head* list)
 {
 	unsigned long address, end;
-	struct sgx_encl_page *encl_page;
-	struct vm_area_struct *vma;
+	struct sgx_encl_page* encl_page;
+	struct vm_area_struct* vma;
 	int ret;
 
 	address = rg->start_addr;
@@ -240,7 +241,6 @@ static int isolate_range(struct sgx_encl *encl,
 #else
 	down_read(&encl->mm->mmap_sem);
 #endif
-
 
 	for (; address < end; address += PAGE_SIZE) {
 		ret = sgx_encl_find(encl->mm, address, &vma);
@@ -266,7 +266,7 @@ static int isolate_range(struct sgx_encl *encl,
 			up_read(&encl->mm->mmap_sem);
 #endif
 			sgx_err(encl, "sgx: No page found at address 0x%lx\n",
-				 address);
+				address);
 			return PTR_ERR(encl_page);
 		}
 
@@ -286,15 +286,16 @@ static int isolate_range(struct sgx_encl *encl,
 	return 0;
 }
 
-static int __modify_range(struct sgx_encl *encl,
-			  struct sgx_range *rg, struct sgx_secinfo *secinfo)
+static int
+__modify_range(struct sgx_encl* encl, struct sgx_range* rg,
+	       struct sgx_secinfo* secinfo)
 {
-	struct sgx_encl_page *encl_page;
+	struct sgx_encl_page* encl_page;
 	struct sgx_epc_page *epc_page, *tmp;
 	LIST_HEAD(list);
 	bool emodt = secinfo->flags & (SGX_SECINFO_TRIM | SGX_SECINFO_TCS);
 	unsigned int epoch = 0;
-	void *epc_va;
+	void* epc_va;
 	int ret = 0, cnt, status = 0;
 
 	ret = isolate_range(encl, rg, &list);
@@ -305,7 +306,8 @@ static int __modify_range(struct sgx_encl *encl,
 		goto out;
 
 	/* EMODT / EMODPR */
-	list_for_each_entry_safe(epc_page, tmp, &list, list) {
+	list_for_each_entry_safe(epc_page, tmp, &list, list)
+	{
 		encl_page = epc_page->encl_page;
 		if (!emodt && (encl_page->flags & SGX_ENCL_PAGE_TCS)) {
 			sgx_err(encl, "sgx: illegal request: page at\
@@ -360,9 +362,10 @@ out:
 	return ret;
 }
 
-long modify_range(struct sgx_range *rg, unsigned long flags)
+long
+modify_range(struct sgx_range* rg, unsigned long flags)
 {
-	struct sgx_encl *encl;
+	struct sgx_encl* encl;
 	struct sgx_secinfo secinfo;
 	struct sgx_range _rg;
 	unsigned long end = rg->start_addr + rg->nr_pages * PAGE_SIZE;
@@ -397,10 +400,9 @@ long modify_range(struct sgx_range *rg, unsigned long flags)
 	 * these pages are removed from the load list. Bigger chunks
 	 * may empty EPC load lists and stall SGX.
 	 */
-	for (_rg.start_addr = rg->start_addr;
-	     _rg.start_addr < end;
+	for (_rg.start_addr = rg->start_addr; _rg.start_addr < end;
 	     rg->nr_pages -= SGX_NR_MOD_CHUNK_PAGES,
-	     _rg.start_addr += SGX_NR_MOD_CHUNK_PAGES*PAGE_SIZE) {
+	    _rg.start_addr += SGX_NR_MOD_CHUNK_PAGES * PAGE_SIZE) {
 		_rg.nr_pages = rg->nr_pages > 0x10 ? 0x10 : rg->nr_pages;
 		ret = __modify_range(encl, &_rg, &secinfo);
 		if (ret)
@@ -412,11 +414,12 @@ out:
 	return ret;
 }
 
-int remove_page(struct sgx_encl *encl, unsigned long address, bool trim)
+int
+remove_page(struct sgx_encl* encl, unsigned long address, bool trim)
 {
-	struct sgx_encl_page *encl_page;
-	struct vm_area_struct *vma;
-	struct sgx_va_page *va_page;
+	struct sgx_encl_page* encl_page;
+	struct vm_area_struct* vma;
+	struct sgx_va_page* va_page;
 	int ret;
 
 	ret = sgx_encl_find(encl->mm, address, &vma);
