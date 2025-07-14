@@ -120,7 +120,7 @@ sgx_mmap(struct file* file, struct vm_area_struct* vma)
 
 static unsigned long
 sgx_get_unmapped_area(struct file* file, unsigned long addr, unsigned long len,
-			  unsigned long pgoff, unsigned long flags)
+		      unsigned long pgoff, unsigned long flags)
 {
 	if (len < 2 * PAGE_SIZE || (len & (len - 1)) || flags & MAP_PRIVATE)
 		return -EINVAL;
@@ -142,9 +142,13 @@ sgx_get_unmapped_area(struct file* file, unsigned long addr, unsigned long len,
 		return -EINVAL;
 #endif
 
-	// 最新カーネルではget_unmapped_areaは外部モジュールから利用不可
-	// そのため、標準mmap動作に任せる（0を返すとカーネルが自動でアドレスを決定）
-	return 0;
+	addr = get_unmapped_area(file, addr, 2 * len, pgoff, flags);
+	if (IS_ERR_VALUE(addr))
+		return addr;
+
+	addr = (addr + (len - 1)) & ~(len - 1);
+
+	return addr;
 }
 
 static const struct file_operations sgx_fops = {
@@ -211,9 +215,9 @@ void
 sgx_reset_pubkey_hash(void* failed)
 {
 	if (wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH0, 0xa6053e051270b7acULL) ||
-		wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH1, 0x6cfbe8ba8b3b413dULL) ||
-		wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH2, 0xc4916d99f2b3735dULL) ||
-		wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH3, 0xd4f8c05909f9bb3bULL))
+	    wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH1, 0x6cfbe8ba8b3b413dULL) ||
+	    wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH2, 0xc4916d99f2b3735dULL) ||
+	    wrmsrl_safe(MSR_IA32_SGXLEPUBKEYHASH3, 0xd4f8c05909f9bb3bULL))
 		*(int*)failed = -EIO;
 }
 
@@ -242,7 +246,7 @@ sgx_dev_init(struct device* parent)
 
 	if (boot_cpu_has(X86_FEATURE_OSXSAVE)) {
 		cpuid_count(SGX_CPUID, SGX_CPUID_ATTRIBUTES, &eax, &ebx, &ecx,
-				&edx);
+			    &edx);
 		sgx_xfrm_mask = (((u64)edx) << 32) + (u64)ecx;
 
 		for (i = 2; i < 64; i++) {
