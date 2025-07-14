@@ -9,7 +9,7 @@ ifneq ($(KERNELRELEASE),)
 		sgx_encl2.o
 	obj-m += isgx.o
 else
-KDIR := /lib/modules/$(shell uname -r)/build
+KDIR := /usr/lib/modules/$(shell uname -r)/build
 PWD  := $(shell pwd)
 
 default:

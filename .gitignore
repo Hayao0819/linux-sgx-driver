@@ -7,3 +7,4 @@
 *.order
 *.tmp_versions
 *.d
+.vscode
