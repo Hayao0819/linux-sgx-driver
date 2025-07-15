@@ -70,7 +70,8 @@
 #include <linux/hashtable.h>
 #include <linux/kthread.h>
 #include <linux/platform_device.h>
-#import  <linux/mm.h>
+#include <linux/sched.h>
+#include <linux/sched/task.h>
 
 #define DRV_DESCRIPTION "Fortanix Intel SGX Driver"
 #define DRV_VERSION "2.12.0"
@@ -142,10 +143,12 @@ sgx_get_unmapped_area(struct file* file, unsigned long addr, unsigned long len,
 		return -EINVAL;
 #endif
 
-	addr = get_unmapped_area(file, addr, 2 * len, pgoff, flags);
+	addr = mm_get_unmapped_area(current->mm, file, addr, 2 * len, pgoff,
+				    flags);
 	if (IS_ERR_VALUE(addr))
 		return addr;
 
+	// len にアライメントを合わせる
 	addr = (addr + (len - 1)) & ~(len - 1);
 
 	return addr;
@@ -258,7 +261,7 @@ sgx_dev_init(struct device* parent)
 
 	for (i = 0; i < SGX_MAX_EPC_BANKS; i++) {
 		cpuid_count(SGX_CPUID, i + SGX_CPUID_EPC_BANKS, &eax, &ebx,
-				&ecx, &edx);
+			    &ecx, &edx);
 		if (!(eax & 0xf))
 			break;
 
@@ -284,7 +287,7 @@ sgx_dev_init(struct device* parent)
 		}
 #endif
 		ret = sgx_add_epc_bank(sgx_epc_banks[i].pa,
-					   sgx_epc_banks[i].size, i);
+				       sgx_epc_banks[i].size, i);
 		if (ret) {
 			sgx_nr_epc_banks = i + 1;
 			goto out_iounmap;
@@ -370,7 +373,7 @@ sgx_drv_probe(struct platform_device* pdev)
 	cpuid_count(SGX_CPUID, SGX_CPUID_CAPABILITIES, &eax, &ebx, &ecx, &edx);
 	if (!(eax & 1)) {
 		pr_err("intel_sgx: CPU does not support the SGX1 "
-			   "instructions\n");
+		       "instructions\n");
 		return -ENODEV;
 	}
 
