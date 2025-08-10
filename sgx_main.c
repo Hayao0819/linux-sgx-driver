@@ -93,6 +93,9 @@ MODULE_VERSION(DRV_VERSION);
 #ifndef FEAT_CTL_SGX_ENABLED
 #define FEAT_CTL_SGX_ENABLED (1 << 18)
 #endif
+
+#define wrmsrl_safe wrmsrq_safe
+
 /*
  * Global data.
  */

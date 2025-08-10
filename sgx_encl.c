@@ -74,6 +74,8 @@
 #include <linux/hashtable.h>
 #include <linux/shmem_fs.h>
 
+#define wrmsrl_safe wrmsrq_safe
+
 struct sgx_add_page_req {
 	struct sgx_encl* encl;
 	struct sgx_encl_page* encl_page;
