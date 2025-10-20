@@ -84,6 +84,10 @@
 #define FEAT_CTL_LOCKED FEATURE_CONTROL_LOCKED
 #endif
 
+#ifndef FEAT_CTL_SGX_LC
+#define FEAT_CTL_SGX_LC (1U << 17)
+#endif
+
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
 MODULE_AUTHOR("Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>");
 MODULE_VERSION(DRV_VERSION);
@@ -186,7 +190,18 @@ has_flc(void)
 {
 	unsigned int eax, ebx, ecx, edx;
 	cpuid(7, &eax, &ebx, &ecx, &edx);
-	return (ecx >> 30) == 0x1;
+	int flc_supported = (ecx >> 30) == 0x1;
+
+	// MSR 3Ah IA32_FEATURE_CONTROL.SGX_LC = 0の場合はfalseを返す
+	unsigned long fc;
+	rdmsrl(MSR_IA32_FEAT_CTL, fc);
+	int flc_enabled = (fc & FEAT_CTL_SGX_LC);
+	if (flc_supported && !flc_enabled) {
+		pr_info("intel_sgx: SGX Launch Control supported but "
+			"disabled\n");
+	}
+
+	return flc_supported && flc_enabled;
 }
 
 static struct miscdevice*
