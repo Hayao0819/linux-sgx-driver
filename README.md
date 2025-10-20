@@ -1,110 +1,150 @@
-# PROJECT NOT UNDER ACTIVE MANAGEMENT #  
-This project will no longer be maintained by Intel.  
-Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases, or updates, to this project.  
-Intel no longer accepts patches to this project.  
- If you have an ongoing need to use this project, are interested in independently developing it, or would like to maintain patches for the open source software community, please create your own fork of this project.  
-  
-Intel(R) Software Guard Extensions for Linux\* OS
-================================================
+# Intel(R) Software Guard Extensions for Linux\* OS
 
-# linux-sgx-driver
+## Hayao Fork
 
-Introduction
-------------
+Intel(R) SGXのLinuxカーネル用のout-of-treeドライバです。FLCの無い環境でEnclaveを起動させる為に必要です。
+
+Linux 6.15以降のカーネルで正常に動作させるために修正を加えています。
+
+### 動作環境
+
+以下の環境で動作を確認しています。
+
+- ASRock Z370 Pro4 (P4.30E)
+  - CPU: Core i7-8086K
+  - OS: Debian 13
+  - Linux: 6.16.8
+- NUC6I3SYH
+  - OS: Debian 12
+  - Linux: 6.16.0
+
+in-kernel driverは無効化する必要はありません。
+
+### 使い方
+
+以下の公式ドキュメントを参照してビルド・インストール後に再起動してください。
+
+DKMSサポートを追加しており、そちらのインストール方法も今後更新する予定です。
+
+### 注意点
+
+FLCが有効なデバイスでの動作チェックをしていません。
+
+## Introduction
+
 Intel(R) Software Guard Extensions (Intel(R) SGX) is an Intel technology for application developers seeking to protect select code and data from disclosure or modification.
 
 The Linux SGX software stack is comprised of the Intel(R) SGX driver, the Intel(R) SGX SDK, and the Intel(R) SGX Platform Software. The Intel(R) SGX SDK and Intel(R) SGX PSW are hosted in the [linux-sgx](https://github.com/01org/linux-sgx) project.
 
-The [linux-sgx-driver](https://github.com/01org/linux-sgx-driver) project hosts the out-of-tree driver for the Linux Intel(R) SGX software stack, which was used until the driver upstreaming process was complete. 
+The [linux-sgx-driver](https://github.com/01org/linux-sgx-driver) project hosts the out-of-tree driver for the Linux Intel(R) SGX software stack, which was used until the driver upstreaming process was complete.
 
-IMPORTANT:
----------
+## IMPORTANT
+
 This driver is deprecated and no longer maintained by Intel. We recommend the SGX community to use the SGX driver that was upstreamed into the Linux kernel. If that is not possible you may still use the [DCAP driver](https://github.com/intel/SGXDataCenterAttestationPrimitives/tree/master/driver) that tracks closely the upstreamed kernel driver. Note that both kernel and DCAP drivers require SGX CPUs with Flexible Launch Control (FLC) support.
 
 For new feature requests/patches, please submit them directly to the [linux-sgx mailing list](http://vger.kernel.org/vger-lists.html#linux-sgx)
 
-License
--------
+## License
+
 See License.txt for details.
 
-Documentation
--------------
+## Documentation
+
 - [Intel(R) SGX for Linux\* OS](https://www.intel.com/content/www/us/en/developer/tools/software-guard-extensions/linux-overview.html)
 - [Intel(R) SGX Programming Reference](https://software.intel.com/en-us/articles/intel-sdm)
 
-Build and Install the Intel(R) SGX Driver
------------------------------------------
+## Build and Install the Intel(R) SGX Driver
 
 ### Prerequisites
+
 - Ensure that you have an operating system version supported as listed for specific releases: [https://01.org/intel-software-guard-extensions/downloads](https://www.intel.com/content/www/us/en/developer/tools/software-guard-extensions/linux-overview.html#downloads)  
 - Ensure that you have the following required hardware:  
-  * 6th Generation Intel(R) Core(TM) Processor or newer
+  - 6th Generation Intel(R) Core(TM) Processor or newer
 - Configure the system with the **SGX hardware enabled** option.
 - To build the driver, the version of installed kernel headers must match the active kernel version on the system.
-  * On Ubuntu
-     * To check if matching kernel headers are installed:
-        ```
-        $ dpkg-query -s linux-headers-$(uname -r)
-        ```
-     * To install matching headers:
-        ```
-        $ sudo apt-get install linux-headers-$(uname -r)
-        ```
-  * On CentOS, RHEL or Fedora
-     * To check if matching kernel headers are installed:
-        ```
-        $ ls /usr/src/kernels/$(uname -r)
-        ``` 
-     * To install matching headers:
-        ```
-        $ sudo yum install kernel-devel
-        ```
-     * After the above command, if the matching headers are still missing in /usr/src/kernels, try update kernel and reboot usig commands below. Then choose updated kernel on boot menu.
-        ```
-        $ sudo yum install kernel
-        $ sudo reboot
-        ```
-     * On RHEL 8.0 elfutils-libelf-devel package is required:
-        ```
-        $ sudo yum install elfutils-libelf-devel
+  - On Ubuntu
+    - To check if matching kernel headers are installed:
+
+        ```bash
+        dpkg-query -s linux-headers-$(uname -r)
         ```
 
+    - To install matching headers:
+
+        ```bash
+        sudo apt-get install linux-headers-$(uname -r)
+        ```
+
+  - On CentOS, RHEL or Fedora
+    - To check if matching kernel headers are installed:
+
+        ```bash
+        ls /usr/src/kernels/$(uname -r)
+        ```
+
+    - To install matching headers:
+
+        ```bash
+        sudo yum install kernel-devel
+        ```
+
+    - After the above command, if the matching headers are still missing in /usr/src/kernels, try update kernel and reboot usig commands below. Then choose updated kernel on boot menu.
+
+        ```bash
+        sudo yum install kernel
+        sudo reboot
+        ```
+
+    - On RHEL 8.0 elfutils-libelf-devel package is required:
+
+        ```bash
+        sudo yum install elfutils-libelf-devel
+        ```
 
 **Note:** Refer to the *"Intel® SGX Resource Enumeration Leaves"* section in the [Intel SGX Programming reference guide](https://software.intel.com/en-us/articles/intel-sdm) to make sure your cpu has the SGX feature.
-
 
 ### Build the Intel(R) SGX Driver
 
 To build Intel(R) SGX driver, change the directory to the driver path and enter the following command:
+
+```bash
+make
 ```
-$ make
-```
+
 You can find the driver *isgx.ko* generated in the same directory.
 
 ### Install the Intel(R) SGX Driver
+
 To install the Intel(R) SGX driver, enter the following command with root privilege:
+
+```bash
+sudo mkdir -p "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"    
+sudo cp isgx.ko "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"    
+sudo sh -c "cat /etc/modules | grep -Fxq isgx || echo isgx >> /etc/modules"    
+sudo /sbin/depmod
+sudo /sbin/modprobe isgx
 ```
-$ sudo mkdir -p "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"    
-$ sudo cp isgx.ko "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"    
-$ sudo sh -c "cat /etc/modules | grep -Fxq isgx || echo isgx >> /etc/modules"    
-$ sudo /sbin/depmod
-$ sudo /sbin/modprobe isgx
-```
+
 On Red Hat Enterprise Linux Server or CentOS, need to run below command on each reboot
+
+```bash
+sudo /sbin/modprobe isgx
 ```
-$ sudo /sbin/modprobe isgx
-``` 
+
 On SUSE, need to add '--allow-unsupported' flag when executing 'modprobe' command during the SGX driver intallation and on each reboot
+
+```bash
+sudo /sbin/modprobe isgx --allow-unsupported
 ```
-$ sudo /sbin/modprobe isgx --allow-unsupported
-``` 
 
 ### Uninstall the Intel(R) SGX Driver
+
 Before uninstall the Intel(R) SGX driver, make sure the aesmd service is stopped. See the topic, Start or Stop aesmd Service, on how to stop the aesmd service.  
-To uninstall the Intel(R) SGX driver, enter the following commands: 
-```
-$ sudo /sbin/modprobe -r isgx
-$ sudo rm -rf "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"
-$ sudo /sbin/depmod
-$ sudo /bin/sed -i '/^isgx$/d' /etc/modules
+To uninstall the Intel(R) SGX driver, enter the following commands:
+
+```bash
+sudo /sbin/modprobe -r isgx
+sudo rm -rf "/lib/modules/"`uname -r`"/kernel/drivers/intel/sgx"
+sudo /sbin/depmod
+sudo /bin/sed -i '/^isgx$/d' /etc/modules
 ```
